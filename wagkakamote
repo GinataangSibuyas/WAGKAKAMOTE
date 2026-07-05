@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+        canvas {
+            border: 1px solid #d3d3d3;
+            background-color: #171717;
+        }
+    </style>
+</head>
+<body onload="startGame()">
+<script>
+
+var lineOffset = 0;
+var myGamePiece;
+var myObstacles = [];
+var myScore;
+
+//Car to Avod
+var blueSvgString = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 18" width="44" height="18">
+  <!-- Low Chassis Base / Dark Shadow -->
+  <rect x="2" y="14" width="40" height="2" fill="#0d47a1" />
+  <!-- Main Body Lower Half -->
+  <rect x="0" y="8" width="42" height="6" fill="#1565c0" />
+  <!-- Slanted Front Hood -->
+  <path d="M 42,10 L 32,8 L 32,14 L 42,14 Z" fill="#1565c0" />
+  <rect x="35" y="9" width="3" height="1" fill="#0d47a1" />
+  <!-- Aero / Roof Side Pillars -->
+  <rect x="4" y="4" width="28" height="4" fill="#42a5f5" />
+  <rect x="10" y="1" width="15" height="3" fill="#42a5f5" />
+  <!-- Distinct Rear Spoiler Lip -->
+  <rect x="0" y="6" width="2" height="2" fill="#0d47a1" />
+  <!-- Cabin Windows -->
+  <path d="M 25,2 L 31,8 L 25,8 Z" fill="#212121" />
+  <rect x="12" y="2" width="13" height="6" fill="#212121" />
+  <path d="M 12,2 L 6,8 L 12,8 Z" fill="#212121" />
+  <!-- Tuner Wheels -->
+  <rect x="7" y="11" width="6" height="6" fill="#000000" />
+  <rect x="8" y="12" width="4" height="4" fill="#d3d3d3" />
+  <rect x="27" y="11" width="6" height="6" fill="#000000" />
+  <rect x="28" y="12" width="4" height="4" fill="#d3d3d3" />
+  <!-- Lights -->
+  <rect x="0" y="9" width="1" height="2" fill="#ff0000" />
+  <rect x="41" y="10" width="1" height="1" fill="#ffca28" />
+</svg>`;
+
+var blueCarData = "data:image/svg+xml;utf8," + encodeURIComponent(blueSvgString);
+
+//Player's Car
+function startGame() {
+    var svgString = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 18" width="44" height="18">
+      <!-- Low S13 Chassis Base / Dark Shadow -->
+      <rect x="2" y="14" width="40" height="2" fill="#1b3a1b" />
+      <!-- Main Body Lower Half -->
+      <rect x="0" y="8" width="42" height="6" fill="#2e7d32" />
+      <!-- Slanted Front Hood -->
+      <path d="M 42,10 L 32,8 L 32,14 L 42,14 Z" fill="#2e7d32" />
+      <rect x="35" y="9" width="3" height="1" fill="#1b3a1b" />
+      <!-- Aero / Roof Side Pillars -->
+      <rect x="4" y="4" width="28" height="4" fill="#4caf50" />
+      <rect x="10" y="1" width="15" height="3" fill="#4caf50" />
+      <!-- Distinct S13 Rear Spoiler Lip -->
+      <rect x="0" y="6" width="2" height="2" fill="#1b3a1b" />
+      <!-- Cabin Windows -->
+      <path d="M 25,2 L 31,8 L 25,8 Z" fill="#212121" />
+      <rect x="12" y="2" width="13" height="6" fill="#212121" />
+      <path d="M 12,2 L 6,8 L 12,8 Z" fill="#212121" />
+      <!-- Tuner Wheels -->
+      <rect x="7" y="11" width="6" height="6" fill="#000000" />
+      <rect x="8" y="12" width="4" height="4" fill="#d3d3d3" />
+      <rect x="27" y="11" width="6" height="6" fill="#000000" />
+      <rect x="28" y="12" width="4" height="4" fill="#d3d3d3" />
+      <!-- Lights -->
+      <rect x="0" y="9" width="1" height="2" fill="#ff0000" />
+      <rect x="41" y="10" width="1" height="1" fill="#ffca28" />
+    </svg>`;
+
+    var nissan180SXData = "data:image/svg+xml;utf8," + encodeURIComponent(svgString);
+    
+    myGamePiece = new component(88, 36, nissan180SXData, 50, 117, "image");
+    myScore = new component("20px", "Arial", "white", 340, 30, "text");
+    
+    myGameArea.start();
+}
+
+//Obstacle
+var myGameArea = {
+    canvas : document.createElement("canvas"),
+    start : function() {
+        this.canvas.width = 480;
+        this.canvas.height = 270;
+        this.frameNo = 0; 
+        this.context = this.canvas.getContext("2d");
+        document.body.insertBefore(this.canvas, document.body.childNodes[0]);
+        this.interval = setInterval(updateGameArea, 10);
+    },
+    clear: function() {
+        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    },
+    stop: function() {
+        clearInterval(this.interval);
+    }
+}
+
+function component(width, height, color, x, y, type) {
+    this.type = type;
+    this.width = width;
+    this.height = height;
+    this.speedX = 0;
+    this.speedY = 0;
+    this.x = x;
+    this.y = y;    
+    
+    if (this.type == "image" || this.type == "obstacle") {
+        this.image = new Image();
+        this.image.src = color;
+    }
+    
+    this.update = function() {
+        var ctx = myGameArea.context;
+        if (this.type == "text") {
+            ctx.font = this.width + " " + this.height;
+            ctx.fillStyle = color;
+            ctx.fillText(this.text, this.x, this.y);
+        } else {
+            ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
+        }
+    }
+    
+    this.newPos = function() {
+        this.x += this.speedX;
+        this.y += this.speedY;        
+    }    
+
+    //Crash
+    this.crashWith = function(otherobj) {
+        var myleft = this.x;
+        var myright = this.x + (this.width);
+        var mytop = this.y;
+        var mybottom = this.y + (this.height);
+        var otherleft = otherobj.x;
+        var otherright = otherobj.x + (otherobj.width);
+        var othertop = otherobj.y;
+        var otherbottom = otherobj.y + (otherobj.height);
+        var crash = true;
+        if ((mybottom < othertop) || (mytop > otherbottom) || (myright < otherleft) || (myleft > otherright)) {
+            crash = false;
+        }
+        return crash;
+    }
+}
+
+function updateGameArea() {
+   
+    for (var i = 0; i < myObstacles.length; i += 1) {
+        if (myGamePiece.crashWith(myObstacles[i])) {
+            myGameArea.stop();
+            
+            //GameOVer
+            var ctx = myGameArea.context;
+            ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+            ctx.fillRect(0, 0, myGameArea.canvas.width, myGameArea.canvas.height);
+            ctx.fillStyle = "#ff3333";
+            ctx.font = "bold 30px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText("KAMOTE", myGameArea.canvas.width / 2, myGameArea.canvas.height / 2);
+            return;
+        }
+    }
+
+    myGameArea.clear();
+    var ctx = myGameArea.context;
+    
+    lineOffset -= 3; 
+    if (lineOffset < -40) {
+        lineOffset = 0;
+    }
+    
+    ctx.strokeStyle = "white";
+    ctx.lineWidth = 6;
+    ctx.setLineDash([25, 15]);
+    ctx.lineDashOffset = -lineOffset;
+    
+    ctx.beginPath();
+    ctx.moveTo(0, 135);
+    ctx.lineTo(myGameArea.canvas.width, 135);
+    ctx.stroke();
+    
+    ctx.setLineDash([]);
+    
+    myGameArea.frameNo += 1;
+    
+    //Spawn Rate
+    if (myGameArea.frameNo == 1 || everyinterval(100)) {
+        var canvasWidth = myGameArea.canvas.width;
+     
+        var randomY = Math.floor(Math.random() * (myGameArea.canvas.height - 36)); 
+        myObstacles.push(new component(88, 36, blueCarData, canvasWidth, randomY, "obstacle"));
+    }
+    
+    //Obstacles
+    for (var i = 0; i < myObstacles.length; i += 1) {
+        myObstacles[i].x -= 2; 
+        myObstacles[i].update();
+    }
+    
+    //Score
+    myScore.text = "SCORE: " + myGameArea.frameNo;
+    myScore.update();
+    
+    myGamePiece.newPos();
+    myGamePiece.update();
+}
+
+function everyinterval(n) {
+    if ((myGameArea.frameNo / n) % 1 == 0) { return true; }
+    return false;
+}
+
+//Controls
+function moveup() {
+    myGamePiece.speedY = -1; 
+}
+
+function movedown() {
+    myGamePiece.speedY = 1; 
+}
+
+function moveleft() {
+    myGamePiece.speedX = -1; 
+}
+
+function moveright() {
+    myGamePiece.speedX = 1; 
+}
+
+function clearmove() {
+    myGamePiece.speedY = 0; 
+}
+
+function stopHorizontal() {
+    myGamePiece.speedX = 0;
+}
+</script>
+<div style="text-align:center;width:480px;">
+  <button onmousedown="moveup()" onmouseup="clearmove()" ontouchstart="moveup()">LEFT</button><br><br>
+  
+  <button onmousedown="moveleft()" onmouseup="clearmove()" ontouchstart="moveleft()">SLOWDOWN</button>
+  <!-- New Stop Button -->
+  <button onmousedown="stopHorizontal()" ontouchstart="stopHorizontal()">BRAKE</button>
+  <button onmousedown="moveright()" onmouseup="clearmove()" ontouchstart="moveright()">ACCELERATE</button><br><br>
+  
+  <button onmousedown="movedown()" onmouseup="clearmove()" ontouchstart="movedown()">RIGHT</button>
+</div>
+
+<p>Tap and Hold "LEFT" button to turn left, "RIGHT" button to turn right, and tap "ACCELERATE" to go forward, "SLOWDOWN" to slowdown, and tap "BRAKE" to stop accelerating or slowing down</p>
+<h1>Reminder: WAG KAKAMOTE!</h1>
+</body>
+</html>
